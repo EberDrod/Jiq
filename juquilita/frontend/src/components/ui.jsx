@@ -42,10 +42,12 @@ export function EmptyState({ icon = 'package', title, children, action }) {
 
 export function Modal({ title, subtitle, onClose, children, footer, size = 'md' }) {
   const ref = useRef(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; });
 
   useEffect(() => {
     function onKey(e) {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseRef.current();
     }
     document.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
@@ -55,7 +57,7 @@ export function Modal({ title, subtitle, onClose, children, footer, size = 'md' 
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = '';
     };
-  }, [onClose]);
+  }, []);
 
   return (
     <div className="modal-overlay" onMouseDown={onClose}>

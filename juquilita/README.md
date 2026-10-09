@@ -52,6 +52,8 @@ npm run dev
 
 La aplicación estará en `http://localhost:5173`
 
+Para apuntar a otro backend, define `VITE_API_URL` (por defecto `http://localhost:3001/api`).
+
 ## Usuario administrador
 
 - **Correo:** admin@juquilita.com
@@ -68,6 +70,7 @@ La aplicación estará en `http://localhost:5173`
 | `/pedido` | Mi pedido |
 | `/confirmar` | Confirmar pedido |
 | `/pedido-confirmado/:folio` | Confirmación |
+| `/rastrear` | Rastrear pedido por folio |
 | `/pedido/:folio` | Consultar pedido |
 
 ### Administrador
@@ -85,6 +88,7 @@ La aplicación estará en `http://localhost:5173`
 | Método | Ruta | Descripción |
 |--------|------|-------------|
 | POST | `/api/login` | Login admin |
+| GET | `/api/me` | Usuario de la sesión actual |
 | GET | `/api/products` | Listar productos (público) |
 | GET | `/api/products/all` | Listar todos (admin) |
 | GET | `/api/products/:id` | Detalle producto |
@@ -99,7 +103,7 @@ La aplicación estará en `http://localhost:5173`
 | PUT | `/api/orders/:id/status` | Cambiar estado |
 | POST | `/api/inventory/entry` | Entrada inventario |
 | POST | `/api/inventory/exit` | Salida inventario |
-| GET | `/api/inventory/movements` | Movimientos |
+| GET | `/api/inventory/movements` | Movimientos (`?product_id=` opcional) |
 | GET | `/api/dashboard` | Datos del dashboard |
 
 ## Productos demo
