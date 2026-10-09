@@ -1,5 +1,5 @@
 const express = require('express');
-const { login } = require('../services/auth');
+const { login, authMiddleware } = require('../services/auth');
 const router = express.Router();
 
 router.post('/login', async (req, res) => {
@@ -17,6 +17,10 @@ router.post('/login', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Error al iniciar sesión' });
   }
+});
+
+router.get('/me', authMiddleware, (req, res) => {
+  res.json({ user: req.user });
 });
 
 module.exports = router;

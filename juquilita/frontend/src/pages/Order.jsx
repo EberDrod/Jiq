@@ -1,69 +1,78 @@
-import { useNavigate } from 'react-router-dom';
-import { getItems, updateQuantity, removeItem, getTotal } from '../services/cart';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
+import { Link, useNavigate } from 'react-router-dom';
+import { useCart } from '../context/CartContext';
+import { money, placeholderImage } from '../lib/format';
+import StoreLayout from '../components/StoreLayout';
 import QuantitySelector from '../components/QuantitySelector';
+import Icon from '../components/Icon';
+import { EmptyState } from '../components/ui';
 
-export default function Order({ cartCount, onCartChange }) {
+export default function Order() {
   const navigate = useNavigate();
-  const items = getItems();
-  const total = getTotal();
-
-  function handleQuantity(productId, qty) {
-    updateQuantity(productId, qty);
-    onCartChange();
-  }
-
-  function handleRemove(productId) {
-    removeItem(productId);
-    onCartChange();
-  }
+  const { items, total, count, updateQuantity, removeItem } = useCart();
 
   return (
-    <>
-      <Navbar cartCount={cartCount} />
-      <div className="container">
-        <section className="page-section">
-          <h2>Mi pedido</h2>
-          {items.length === 0 ? (
-            <div className="empty-state">
-              <h3>Tu pedido está vacío</h3>
-              <p>Busca productos y agrégalos a tu pedido.</p>
-              <button className="btn btn-primary" style={{ marginTop: '1rem' }} onClick={() => navigate('/tienda')}>
-                Ver productos
-              </button>
-            </div>
-          ) : (
-            <>
-              {items.map(item => (
-                <div key={item.product_id} className="order-item">
-                  <div className="order-item-info">
-                    <div className="order-item-name">{item.name}</div>
-                    <div className="order-item-price">${Number(item.price).toFixed(2)} por {item.unit}</div>
-                  </div>
-                  <div className="order-item-actions">
-                    <QuantitySelector
-                      value={item.quantity}
-                      onChange={qty => handleQuantity(item.product_id, qty)}
-                      max={item.stock}
-                    />
-                    <div className="order-item-subtotal">${(item.price * item.quantity).toFixed(2)}</div>
-                  </div>
-                  <button className="remove-btn" onClick={() => handleRemove(item.product_id)}>Eliminar</button>
-                </div>
-              ))}
-              <div className="order-total">
-                <span>Total</span>
-                <span>${total.toFixed(2)} MXN</span>
+    <StoreLayout>
+      <div className="container section-tight">
+        <div className="page-head">
+          <h1>Mi pedido</h1>
+          {items.length > 0 && <p className="text-muted">{count} {count === 1 ? 'artículo' : 'artículos'}</p>}
+        </div>
+
+        {items.length === 0 ? (
+          <EmptyState
+            icon="bag"
+            title="Tu pedido está vacío"
+            action={<Link to="/tienda" className="btn btn-primary">Explorar catálogo</Link>}
+          >
+            Agrega productos desde el catálogo y aquí verás el resumen.
+          </EmptyState>
+        ) : (
+          <div className="checkout-grid">
+            <div className="card card-flush">
+              <ul className="cart-list">
+                {items.map(item => (
+                  <li key={item.product_id} className="cart-item">
+                    <Link to={`/producto/${item.product_id}`} className="cart-item-img">
+                      <img src={item.image_url || placeholderImage(item.name)} alt="" />
+                    </Link>
+                    <div className="cart-item-info">
+                      <Link to={`/producto/${item.product_id}`} className="cart-item-name">{item.name}</Link>
+                      <span className="text-sm text-muted">{item.brand ? `${item.brand} · ` : ''}{money(item.price)} / {item.unit}</span>
+                      {item.quantity >= item.stock && <span className="text-xs text-warning">Máximo disponible</span>}
+                    </div>
+                    <div className="cart-item-qty">
+                      <QuantitySelector
+                        value={item.quantity}
+                        onChange={q => updateQuantity(item.product_id, q)}
+                        max={item.stock}
+                        size="sm"
+                      />
+                    </div>
+                    <strong className="cart-item-total">{money(item.price * item.quantity)}</strong>
+                    <button className="icon-btn icon-btn-danger" onClick={() => removeItem(item.product_id)} aria-label={`Quitar ${item.name}`}>
+                      <Icon name="trash" size={18} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <div className="cart-continue">
+                <Link to="/tienda" className="link-arrow"><Icon name="arrowLeft" size={16} /> Seguir comprando</Link>
               </div>
-              <button className="btn btn-primary btn-block" onClick={() => navigate('/confirmar')}>
-                Continuar
+            </div>
+
+            <aside className="card summary">
+              <h3>Resumen</h3>
+              <div className="summary-row"><span>Subtotal</span><span>{money(total)}</span></div>
+              <div className="summary-row"><span>Entrega</span><span className="text-muted">Se define al confirmar</span></div>
+              <div className="summary-total"><span>Total</span><strong>{money(total)}</strong></div>
+              <button className="btn btn-primary btn-lg btn-block" onClick={() => navigate('/confirmar')}>
+                Continuar <Icon name="arrowRight" size={18} />
               </button>
-            </>
-          )}
-        </section>
+              <p className="summary-note"><Icon name="shield" size={16} /> No pagas nada en línea. Pagas al recoger o al recibir.</p>
+            </aside>
+          </div>
+        )}
       </div>
-      <Footer />
-    </>
+    </StoreLayout>
   );
 }

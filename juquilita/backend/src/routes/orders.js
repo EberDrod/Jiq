@@ -14,6 +14,15 @@ router.post('/', async (req, res) => {
     if (!customer_name || !customer_phone || !delivery_type || !payment_method) {
       return res.status(400).json({ error: 'Faltan datos del cliente' });
     }
+    if (!['pickup', 'delivery'].includes(delivery_type)) {
+      return res.status(400).json({ error: 'Tipo de entrega inválido' });
+    }
+    if (!['pay_on_pickup', 'pay_on_delivery'].includes(payment_method)) {
+      return res.status(400).json({ error: 'Método de pago inválido' });
+    }
+    if (String(customer_phone).replace(/\D/g, '').length < 10) {
+      return res.status(400).json({ error: 'El teléfono debe tener al menos 10 dígitos' });
+    }
     if (delivery_type === 'delivery' && !address) {
       return res.status(400).json({ error: 'La dirección es requerida para entrega a domicilio' });
     }
@@ -34,7 +43,8 @@ router.post('/', async (req, res) => {
       }
 
       const p = product.rows[0];
-      if (item.quantity <= 0) {
+      item.quantity = Number(item.quantity);
+      if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
         await client.query('ROLLBACK');
         return res.status(400).json({ error: `Cantidad inválida para ${p.name}` });
       }
@@ -98,7 +108,13 @@ router.post('/', async (req, res) => {
 
 router.get('/', authMiddleware, async (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM orders ORDER BY created_at DESC');
+    const result = await db.query(
+      `SELECT o.*, COALESCE(SUM(oi.quantity), 0)::int AS items_count
+       FROM orders o
+       LEFT JOIN order_items oi ON oi.order_id = o.id
+       GROUP BY o.id
+       ORDER BY o.created_at DESC`
+    );
     res.json(result.rows);
   } catch (err) {
     console.error(err);
@@ -108,11 +124,18 @@ router.get('/', authMiddleware, async (req, res) => {
 
 router.get('/folio/:folio', async (req, res) => {
   try {
-    const order = await db.query('SELECT * FROM orders WHERE folio = $1', [req.params.folio]);
+    const order = await db.query('SELECT * FROM orders WHERE UPPER(folio) = UPPER($1)', [req.params.folio.trim()]);
     if (order.rows.length === 0) {
       return res.status(404).json({ error: 'Pedido no encontrado' });
     }
-    const items = await db.query('SELECT * FROM order_items WHERE order_id = $1', [order.rows[0].id]);
+    const items = await db.query(
+      `SELECT oi.*, p.image_url, p.unit
+       FROM order_items oi
+       LEFT JOIN products p ON p.id = oi.product_id
+       WHERE oi.order_id = $1
+       ORDER BY oi.id`,
+      [order.rows[0].id]
+    );
     res.json({ ...order.rows[0], items: items.rows });
   } catch (err) {
     console.error(err);
@@ -126,7 +149,14 @@ router.get('/:id', authMiddleware, async (req, res) => {
     if (order.rows.length === 0) {
       return res.status(404).json({ error: 'Pedido no encontrado' });
     }
-    const items = await db.query('SELECT * FROM order_items WHERE order_id = $1', [req.params.id]);
+    const items = await db.query(
+      `SELECT oi.*, p.image_url, p.unit
+       FROM order_items oi
+       LEFT JOIN products p ON p.id = oi.product_id
+       WHERE oi.order_id = $1
+       ORDER BY oi.id`,
+      [order.rows[0].id]
+    );
     res.json({ ...order.rows[0], items: items.rows });
   } catch (err) {
     console.error(err);
@@ -152,6 +182,11 @@ router.put('/:id/status', authMiddleware, async (req, res) => {
     }
 
     const currentOrder = order.rows[0];
+
+    if (currentOrder.status === 'CANCELLED' && status !== 'CANCELLED') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Un pedido cancelado no puede reactivarse' });
+    }
 
     if (status === 'CANCELLED' && currentOrder.status !== 'CANCELLED') {
       const items = await client.query('SELECT * FROM order_items WHERE order_id = $1', [currentOrder.id]);

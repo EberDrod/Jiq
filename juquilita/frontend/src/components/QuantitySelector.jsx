@@ -1,9 +1,17 @@
-export default function QuantitySelector({ value, onChange, max }) {
+import Icon from './Icon';
+
+export default function QuantitySelector({ value, onChange, max, size = 'md' }) {
+  const atMin = value <= 1;
+  const atMax = max != null && value >= max;
   return (
-    <div className="qty-selector">
-      <button onClick={() => onChange(Math.max(1, value - 1))}>−</button>
-      <span>{value}</span>
-      <button onClick={() => onChange(max ? Math.min(max, value + 1) : value + 1)}>+</button>
+    <div className={`qty qty-${size}`}>
+      <button type="button" onClick={() => onChange(value - 1)} disabled={atMin} aria-label="Quitar uno">
+        <Icon name="minus" size={16} />
+      </button>
+      <span aria-live="polite">{value}</span>
+      <button type="button" onClick={() => onChange(value + 1)} disabled={atMax} aria-label="Agregar uno">
+        <Icon name="plus" size={16} />
+      </button>
     </div>
   );
 }

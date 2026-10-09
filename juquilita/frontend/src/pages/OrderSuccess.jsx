@@ -1,50 +1,78 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import { api } from '../services/api';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
+import { money } from '../lib/format';
+import { DELIVERY, PAYMENT, STORE } from '../lib/constants';
+import { useToast } from '../context/ToastContext';
+import StoreLayout from '../components/StoreLayout';
+import OrderTimeline from '../components/OrderTimeline';
+import Icon from '../components/Icon';
+import { Skeleton } from '../components/ui';
 
-const STATUS_LABELS = {
-  RECEIVED: 'Recibido',
-  PREPARING: 'Preparando',
-  READY: 'Listo',
-  COMPLETED: 'Entregado',
-  CANCELLED: 'Cancelado',
-};
-
-const DELIVERY_LABELS = {
-  pickup: 'Recoger en Juquilita',
-  delivery: 'Entrega a domicilio',
-};
-
-export default function OrderSuccess({ cartCount }) {
+export default function OrderSuccess() {
   const { folio } = useParams();
+  const toast = useToast();
   const [order, setOrder] = useState(null);
 
   useEffect(() => {
     api.getOrderByFolio(folio).then(setOrder).catch(() => {});
   }, [folio]);
 
-  if (!order) return <><Navbar cartCount={cartCount} /><div className="container" style={{padding: '3rem', textAlign: 'center'}}>Cargando...</div></>;
+  function copyFolio() {
+    navigator.clipboard?.writeText(folio).then(
+      () => toast.success('Folio copiado'),
+      () => toast.error('No se pudo copiar'),
+    );
+  }
 
   return (
-    <>
-      <Navbar cartCount={cartCount} />
-      <div className="container">
-        <div className="success-page">
-          <h1>¡Listo!</h1>
-          <p className="success-subtitle">Recibimos tu pedido.</p>
-          <div className="success-detail">
-            <div className="row"><span className="label">Pedido</span><span className="value">{order.folio}</span></div>
-            <div className="row"><span className="label">Total</span><span className="value">${Number(order.total).toFixed(2)} MXN</span></div>
-            <div className="row"><span className="label">Entrega</span><span className="value">{DELIVERY_LABELS[order.delivery_type]}</span></div>
-            <div className="row"><span className="label">Estado</span><span className="value">{STATUS_LABELS[order.status]}</span></div>
+    <StoreLayout>
+      <div className="container section-tight narrow">
+        <ol className="checkout-steps" aria-label="Progreso">
+          <li className="is-done"><span><Icon name="check" size={14} /></span> Pedido</li>
+          <li className="is-done"><span><Icon name="check" size={14} /></span> Datos de entrega</li>
+          <li className="is-done is-current"><span><Icon name="check" size={14} /></span> Confirmación</li>
+        </ol>
+
+        <div className="success-hero">
+          <div className="success-icon"><Icon name="check" size={36} strokeWidth={2.5} /></div>
+          <h1>¡Recibimos tu pedido!</h1>
+          <p className="text-muted">Guarda tu folio para consultar el estado en cualquier momento.</p>
+          <button className="folio-pill" onClick={copyFolio} title="Copiar folio">
+            <span>Folio</span>
+            <strong>{folio}</strong>
+            <Icon name="copy" size={16} />
+          </button>
+        </div>
+
+        {!order ? (
+          <Skeleton height={260} radius={16} />
+        ) : (
+          <div className="card stack-md">
+            <OrderTimeline status={order.status} deliveryType={order.delivery_type} />
+            <dl className="detail-list">
+              <div><dt>Entrega</dt><dd><Icon name={DELIVERY[order.delivery_type].icon} size={16} /> {DELIVERY[order.delivery_type].label}</dd></div>
+              {order.address && <div><dt>Dirección</dt><dd>{order.address}</dd></div>}
+              <div><dt>Pago</dt><dd>{PAYMENT[order.payment_method]}</dd></div>
+              <div><dt>Productos</dt><dd>{order.items.reduce((s, i) => s + i.quantity, 0)} artículos</dd></div>
+              <div className="detail-total"><dt>Total a pagar</dt><dd>{money(order.total)}</dd></div>
+            </dl>
+            <div className="note">
+              <Icon name="phone" size={18} />
+              <span>{order.delivery_type === 'pickup'
+                ? `Te avisaremos al ${order.customer_phone} cuando esté listo para recoger.`
+                : `Te llamaremos al ${order.customer_phone} antes de salir a entregar.`}
+                {' '}¿Dudas? Llámanos al {STORE.phone}.
+              </span>
+            </div>
           </div>
-          <p style={{ marginTop: '2rem', color: 'var(--gray-500)' }}>Juquilita preparará tu pedido.</p>
-          <Link to="/" className="btn btn-secondary" style={{ marginTop: '1rem' }}>Volver al inicio</Link>
+        )}
+
+        <div className="success-actions">
+          <Link to={`/pedido/${folio}`} className="btn btn-primary">Seguir mi pedido</Link>
+          <Link to="/tienda" className="btn btn-outline">Seguir comprando</Link>
         </div>
       </div>
-      <Footer />
-    </>
+    </StoreLayout>
   );
 }

@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { getCount } from './services/cart';
+import { CartProvider } from './context/CartContext';
+import { ToastProvider } from './context/ToastContext';
 
 import Home from './pages/Home';
 import Shop from './pages/Shop';
@@ -9,6 +9,7 @@ import Order from './pages/Order';
 import Confirm from './pages/Confirm';
 import OrderSuccess from './pages/OrderSuccess';
 import OrderLookup from './pages/OrderLookup';
+import NotFound from './pages/NotFound';
 
 import Login from './pages/admin/Login';
 import Dashboard from './pages/admin/Dashboard';
@@ -24,30 +25,31 @@ function ProtectedRoute({ children }) {
 }
 
 export default function App() {
-  const [cartCount, setCartCount] = useState(getCount());
-
-  const refreshCart = useCallback(() => {
-    setCartCount(getCount());
-  }, []);
-
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home cartCount={cartCount} />} />
-        <Route path="/tienda" element={<Shop cartCount={cartCount} onCartChange={refreshCart} />} />
-        <Route path="/producto/:id" element={<ProductDetail cartCount={cartCount} onCartChange={refreshCart} />} />
-        <Route path="/pedido" element={<Order cartCount={cartCount} onCartChange={refreshCart} />} />
-        <Route path="/confirmar" element={<Confirm cartCount={cartCount} onCartChange={refreshCart} />} />
-        <Route path="/pedido-confirmado/:folio" element={<OrderSuccess cartCount={cartCount} />} />
-        <Route path="/pedido/:folio" element={<OrderLookup cartCount={cartCount} />} />
+      <CartProvider>
+        <ToastProvider>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/tienda" element={<Shop />} />
+            <Route path="/producto/:id" element={<ProductDetail />} />
+            <Route path="/pedido" element={<Order />} />
+            <Route path="/confirmar" element={<Confirm />} />
+            <Route path="/pedido-confirmado/:folio" element={<OrderSuccess />} />
+            <Route path="/rastrear" element={<OrderLookup />} />
+            <Route path="/pedido/:folio" element={<OrderLookup />} />
 
-        <Route path="/admin/login" element={<Login />} />
-        <Route path="/admin" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/admin/productos" element={<ProtectedRoute><Products /></ProtectedRoute>} />
-        <Route path="/admin/inventario" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
-        <Route path="/admin/pedidos" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-        <Route path="/admin/pedidos/:id" element={<ProtectedRoute><AdminOrderDetail /></ProtectedRoute>} />
-      </Routes>
+            <Route path="/admin/login" element={<Login />} />
+            <Route path="/admin" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/admin/productos" element={<ProtectedRoute><Products /></ProtectedRoute>} />
+            <Route path="/admin/inventario" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
+            <Route path="/admin/pedidos" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+            <Route path="/admin/pedidos/:id" element={<ProtectedRoute><AdminOrderDetail /></ProtectedRoute>} />
+
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </ToastProvider>
+      </CartProvider>
     </BrowserRouter>
   );
 }

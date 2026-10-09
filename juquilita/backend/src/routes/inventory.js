@@ -6,8 +6,9 @@ const router = express.Router();
 router.post('/entry', authMiddleware, async (req, res) => {
   const client = await db.connect();
   try {
-    const { product_id, quantity, notes } = req.body;
-    if (!product_id || !quantity || quantity <= 0) {
+    const { product_id, notes } = req.body;
+    const quantity = Number(req.body.quantity);
+    if (!product_id || !Number.isInteger(quantity) || quantity <= 0) {
       return res.status(400).json({ error: 'Producto y cantidad válida son requeridos' });
     }
 
@@ -44,8 +45,9 @@ router.post('/entry', authMiddleware, async (req, res) => {
 router.post('/exit', authMiddleware, async (req, res) => {
   const client = await db.connect();
   try {
-    const { product_id, quantity, notes } = req.body;
-    if (!product_id || !quantity || quantity <= 0) {
+    const { product_id, notes } = req.body;
+    const quantity = Number(req.body.quantity);
+    if (!product_id || !Number.isInteger(quantity) || quantity <= 0) {
       return res.status(400).json({ error: 'Producto y cantidad válida son requeridos' });
     }
 
@@ -86,12 +88,21 @@ router.post('/exit', authMiddleware, async (req, res) => {
 
 router.get('/movements', authMiddleware, async (req, res) => {
   try {
+    const params = [];
+    let where = '';
+    if (req.query.product_id) {
+      params.push(req.query.product_id);
+      where = 'WHERE im.product_id = $1';
+    }
     const result = await db.query(
-      `SELECT im.*, p.name as product_name
+      `SELECT im.*, p.name as product_name, p.unit, o.folio
        FROM inventory_movements im
        JOIN products p ON im.product_id = p.id
+       LEFT JOIN orders o ON im.order_id = o.id
+       ${where}
        ORDER BY im.created_at DESC
-       LIMIT 100`
+       LIMIT 100`,
+      params
     );
     res.json(result.rows);
   } catch (err) {
